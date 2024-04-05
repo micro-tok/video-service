@@ -1,11 +1,7 @@
 package main
 
-import (
-	"github.com/micro-tok/video-service/pkg/config"
-)
-
 func main() {
-	cfg := config.LoadConfig()
+	// cfg := config.LoadConfig()
 
 	//TODO: init cassandra conn
 
