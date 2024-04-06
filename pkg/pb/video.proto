@@ -27,8 +27,9 @@ service VideoService {
   
   message GetVideoMetadataResponse {
     string id = 1;
-    string title = 2;
-    string description = 3;
-    string url = 4;
-    repeated string tags = 5; // Optional
+    string ownerId = 2;
+    string title = 3;
+    string description = 4;
+    string url = 5;
+    repeated string tags = 6; // Optional
   }
