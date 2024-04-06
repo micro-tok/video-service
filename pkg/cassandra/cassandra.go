@@ -42,3 +42,27 @@ func (s CassandraService) SaveMetadata(ownerID uuid.UUID, title string, descript
 
 	return videoID, nil
 }
+
+func (s CassandraService) LoadMetadata(videoID uuid.UUID) (uuid.UUID, string, string, string, []string, error) {
+	cluster := gocql.NewCluster(s.ClusterIP)
+	cluster.Keyspace = s.Keyspace
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to connect to Cassandra: %v", err)
+		return uuid.UUID{}, "", "", "", nil, err
+	}
+	defer session.Close()
+
+	var ownerID uuid.UUID
+	var title string
+	var description string
+	var url string
+	var tags []string
+
+	if err := session.Query(`SELECT ownerId, title, description, url, tags FROM videos WHERE id = ?`, videoID).Scan(&ownerID, &title, &description, &url, &tags); err != nil {
+		log.Fatalf("Failed to select from Cassandra: %v", err)
+		return uuid.UUID{}, "", "", "", nil, err
+	}
+
+	return ownerID, title, description, url, tags, nil
+}
