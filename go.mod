@@ -5,7 +5,6 @@ go 1.22.1
 require (
 	github.com/aws/aws-sdk-go v1.51.16
 	github.com/gocql/gocql v1.6.0
-	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gofrs/uuid/v5 v5.0.0
 	google.golang.org/grpc v1.63.0
 	google.golang.org/protobuf v1.33.0
