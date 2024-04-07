@@ -2,11 +2,13 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/micro-tok/video-service/pkg/cassandra"
 	"github.com/micro-tok/video-service/pkg/pb"
+	"github.com/micro-tok/video-service/pkg/redis"
 	"github.com/micro-tok/video-service/pkg/s3"
 )
 
@@ -24,15 +26,17 @@ type VideoService interface {
 }
 
 type videoService struct {
-	cass *cassandra.CassandraService
-	s3   *s3.AWSService
+	cass  *cassandra.CassandraService
+	s3    *s3.AWSService
+	redis *redis.RedisService
 }
 
-func NewVideoService(cass *cassandra.CassandraService, s3 *s3.AWSService) Service {
+func NewVideoService(cass *cassandra.CassandraService, s3 *s3.AWSService, redis *redis.RedisService) Service {
 	return &service{
 		VideoService: &videoService{
-			cass: cass,
-			s3:   s3,
+			cass:  cass,
+			s3:    s3,
+			redis: redis,
 		},
 	}
 }
@@ -80,12 +84,46 @@ func (s videoService) UploadVideo(ctx context.Context, req *pb.UploadVideoReques
 }
 
 func (s videoService) GetVideoMetadata(ctx context.Context, req *pb.GetVideoMetadataRequest) (*pb.GetVideoMetadataResponse, error) {
+	val, _ := s.redis.Get(req.Id)
+
+	if val != "" {
+		//unmarshal the value
+		var res pb.GetVideoMetadataResponse
+		err := json.Unmarshal([]byte(val), &res)
+		if err != nil {
+			return nil, err
+		}
+
+		return &res, nil
+	}
+
 	id, err := uuid.FromString(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	ownerID, title, description, url, tags, err := s.cass.LoadMetadata(id)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &pb.GetVideoMetadataResponse{
+		Id:          id.String(),
+		OwnerId:     ownerID.String(),
+		Title:       title,
+		Description: description,
+		Url:         url,
+		Tags:        tags,
+	}
+
+	//marshal the value
+	jsonData, err := json.Marshal(res)
+	if err != nil {
+		return nil, err
+	}
+
+	//set the value in redis
+	err = s.redis.Set(req.Id, jsonData)
 	if err != nil {
 		return nil, err
 	}
