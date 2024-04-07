@@ -35,7 +35,7 @@ func (s CassandraService) SaveMetadata(ownerID uuid.UUID, title string, descript
 		return uuid.UUID{}, err
 	}
 
-	if err := session.Query(`INSERT INTO videos (id, ownerId, title, description, url, tags) VALUES (?, ?, ?, ?, ?, ?)`, videoID, ownerID, title, description, url, tags).Exec(); err != nil {
+	if err := session.Query(`INSERT INTO videos (video_id, owner_id, title, description, url, tags) VALUES (?, ?, ?, ?, ?, ?)`, videoID.String(), ownerID.String(), title, description, url, tags).Exec(); err != nil {
 		log.Fatalf("Failed to insert into Cassandra: %v", err)
 		return uuid.UUID{}, err
 	}
@@ -53,14 +53,21 @@ func (s CassandraService) LoadMetadata(videoID uuid.UUID) (uuid.UUID, string, st
 	}
 	defer session.Close()
 
+	var ownerIDString string
 	var ownerID uuid.UUID
 	var title string
 	var description string
 	var url string
 	var tags []string
 
-	if err := session.Query(`SELECT ownerId, title, description, url, tags FROM videos WHERE id = ?`, videoID).Scan(&ownerID, &title, &description, &url, &tags); err != nil {
+	if err := session.Query(`SELECT owner_id, title, description, url, tags FROM videos WHERE video_id = ?`, videoID.String()).Scan(&ownerIDString, &title, &description, &url, &tags); err != nil {
 		log.Fatalf("Failed to select from Cassandra: %v", err)
+		return uuid.UUID{}, "", "", "", nil, err
+	}
+
+	ownerID, err = uuid.FromString(ownerIDString)
+	if err != nil {
+		log.Fatalf("Failed to convert ownerID to UUID: %v", err)
 		return uuid.UUID{}, "", "", "", nil, err
 	}
 

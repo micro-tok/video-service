@@ -18,7 +18,6 @@ type AWSService struct {
 func NewAWSService(cfg *config.Config) *AWSService {
 	s3Config := &aws.Config{
 		Credentials:      credentials.NewStaticCredentials(cfg.BucketKey, cfg.BucketSecret, ""),
-		Endpoint:         aws.String("s3://micro-tok"),
 		Region:           aws.String("eu-north-1"),
 		S3ForcePathStyle: aws.Bool(false),
 	}
@@ -48,6 +47,8 @@ func (s AWSService) UploadFile(file multipart.File, filepath string) (string, er
 	if err != nil {
 		return "", err
 	}
+
+	filepath = "https://" + s.bucketName + ".s3.amazonaws.com/" + filepath
 
 	return filepath, nil
 }
