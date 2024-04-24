@@ -13,7 +13,8 @@ service VideoService {
     bytes video = 1;
     string title = 2;
     string description = 3;
-    repeated string tags = 4; // Optional, if you want to include tags
+    string ownerId = 4;
+    repeated string tags = 5; // Optional, if you want to include tags
   }
   
   message UploadVideoResponse {

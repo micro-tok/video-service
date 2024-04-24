@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/gofrs/uuid/v5"
@@ -43,7 +45,13 @@ func NewVideoService(cass *cassandra.CassandraService, s3 *s3.AWSService, redis 
 
 func (s videoService) UploadVideo(ctx context.Context, req *pb.UploadVideoRequest) (*pb.UploadVideoResponse, error) {
 	// Generate UUID
-	id, err := uuid.NewV4()
+	id := uuid.FromStringOrNil(req.OwnerId)
+	if id == uuid.Nil {
+		fmt.Println("Invalid owner id: ", req.OwnerId)
+		return nil, errors.New("invalid owner id")
+	}
+
+	videoID, err := uuid.NewV4()
 	if err != nil {
 		return nil, err
 	}
@@ -67,19 +75,19 @@ func (s videoService) UploadVideo(ctx context.Context, req *pb.UploadVideoReques
 	}
 
 	// Upload to S3
-	path, err := s.s3.UploadFile(part, id.String()+".mp4")
+	path, err := s.s3.UploadFile(part, videoID.String()+".mp4")
 	if err != nil {
 		return nil, err
 	}
 
 	// Save to Cassandra
-	_, err = s.cass.SaveMetadata(id, req.Title, req.Description, path, req.Tags)
+	_, err = s.cass.SaveMetadata(videoID, id, req.Title, req.Description, path, req.Tags)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.UploadVideoResponse{
-		Id: id.String(),
+		Id: videoID.String(),
 	}, nil
 }
 

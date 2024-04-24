@@ -20,7 +20,7 @@ func NewCassandraService(cfg *config.Config) *CassandraService {
 	}
 }
 
-func (s CassandraService) SaveMetadata(ownerID uuid.UUID, title string, description string, url string, tags []string) (uuid.UUID, error) {
+func (s CassandraService) SaveMetadata(videoID uuid.UUID, ownerID uuid.UUID, title string, description string, url string, tags []string) (uuid.UUID, error) {
 	cluster := gocql.NewCluster(s.ClusterIP)
 	cluster.Keyspace = s.Keyspace
 	session, err := cluster.CreateSession()
@@ -29,11 +29,6 @@ func (s CassandraService) SaveMetadata(ownerID uuid.UUID, title string, descript
 		return uuid.UUID{}, err
 	}
 	defer session.Close()
-
-	videoID, err := uuid.NewV4()
-	if err != nil {
-		return uuid.UUID{}, err
-	}
 
 	if err := session.Query(`INSERT INTO videos (video_id, owner_id, title, description, url, tags) VALUES (?, ?, ?, ?, ?, ?)`, videoID.String(), ownerID.String(), title, description, url, tags).Exec(); err != nil {
 		log.Fatalf("Failed to insert into Cassandra: %v", err)
@@ -48,7 +43,7 @@ func (s CassandraService) LoadMetadata(videoID uuid.UUID) (uuid.UUID, string, st
 	cluster.Keyspace = s.Keyspace
 	session, err := cluster.CreateSession()
 	if err != nil {
-		log.Fatalf("Failed to connect to Cassandra: %v", err)
+		log.Printf("Failed to connect to Cassandra: %v\n", err)
 		return uuid.UUID{}, "", "", "", nil, err
 	}
 	defer session.Close()
@@ -61,13 +56,13 @@ func (s CassandraService) LoadMetadata(videoID uuid.UUID) (uuid.UUID, string, st
 	var tags []string
 
 	if err := session.Query(`SELECT owner_id, title, description, url, tags FROM videos WHERE video_id = ?`, videoID.String()).Scan(&ownerIDString, &title, &description, &url, &tags); err != nil {
-		log.Fatalf("Failed to select from Cassandra: %v", err)
+		log.Printf("Failed to select from Cassandra: %v\n", err)
 		return uuid.UUID{}, "", "", "", nil, err
 	}
 
 	ownerID, err = uuid.FromString(ownerIDString)
 	if err != nil {
-		log.Fatalf("Failed to convert ownerID to UUID: %v", err)
+		log.Printf("Failed to convert ownerID to UUID: %v\n", err)
 		return uuid.UUID{}, "", "", "", nil, err
 	}
 
